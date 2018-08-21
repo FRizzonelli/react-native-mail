@@ -4,7 +4,6 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.net.Uri;
-import android.text.Html;
 
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
@@ -53,20 +52,21 @@ public class RNMailModule extends ReactContextBaseJavaModule {
 
   @ReactMethod
   public void mail(ReadableMap options, Callback callback) {
-    Intent i = new Intent(Intent.ACTION_SENDTO);
-    i.setData(Uri.parse("mailto:"));
+    Intent i;
+    if (options.hasKey("attachment") && !options.isNull("attachment")) {
+      i = new Intent(Intent.ACTION_SEND);
+      i.setType("vnd.android.cursor.dir/email");
+    } else {
+      i = new Intent(Intent.ACTION_SENDTO);
+      i.setData(Uri.parse("mailto:"));
+    }
 
     if (options.hasKey("subject") && !options.isNull("subject")) {
       i.putExtra(Intent.EXTRA_SUBJECT, options.getString("subject"));
     }
 
     if (options.hasKey("body") && !options.isNull("body")) {
-      String body = options.getString("body");
-      if (options.hasKey("isHTML") && options.getBoolean("isHTML")) {
-        i.putExtra(Intent.EXTRA_TEXT, Html.fromHtml(body));
-      } else {
-        i.putExtra(Intent.EXTRA_TEXT, body);
-      }
+      i.putExtra(Intent.EXTRA_TEXT, options.getString("body"));
     }
 
     if (options.hasKey("recipients") && !options.isNull("recipients")) {
@@ -110,7 +110,13 @@ public class RNMailModule extends ReactContextBaseJavaModule {
         callback.invoke("error");
       }
     } else {
-      Intent chooser = Intent.createChooser(i, "Send Mail");
+      String chooserLabel;
+      if (options.hasKey("chooserLabel") && !options.isNull("chooserLabel")) {
+       chooserLabel = options.getString("chooserLabel");
+      } else {
+       chooserLabel = "Send Mail";
+      }
+      Intent chooser = Intent.createChooser(i, chooserLabel);
       chooser.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 
       try {
